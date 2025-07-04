@@ -1,0 +1,8 @@
+blockchain-document-sharing-demo/
+├── index.html
+├── css/
+│   └── styles.css
+├── js/
+│   └── script.js
+├── README.md
+└── LICENSE
