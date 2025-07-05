@@ -9,63 +9,80 @@ on:
 env:
   JEKYLL_ENV: production
   BUNDLE_PATH: vendor/bundle
-  BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
+  LC_ALL: C.UTF-8
+  LANG: C.UTF-8
 
 jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: jekyll/builder:latest
+      image: jekyll/builder:4.2.0  # Pinned version for stability
       
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Get complete history for plugins that need it
 
-      - name: Debug - List files
-        run: ls -la
-        if: always()
+      - name: Validate repository structure
+        run: |
+          echo "Repository contents:"
+          ls -la
+          echo "Checking required files..."
+          [ -f Gemfile ] || exit 1
+          [ -f _config.yml ] || exit 1
+          echo "Basic structure validated"
 
-      - name: Setup Ruby
+      - name: Setup Ruby environment
+        run: |
+          sudo gem update --system
+          sudo gem install bundler -v 2.4.22
+          bundle config set path $BUNDLE_PATH
+          bundle config set deployment true
+          bundle config set clean true
+          bundle config set without 'development test'
+
+      - name: Install dependencies with retry
+        run: |
+          n=0
+          until [ "$n" -ge 3 ]
+          do
+            bundle install --jobs 4 --retry 3 && break
+            n=$((n+1))
+            echo "Bundle install failed, attempt $n/3..."
+            sleep 5
+          done
+          [ "$n" -lt 3 ] || exit 1
+
+      - name: Verify environment
         run: |
           echo "Ruby version: $(ruby -v)"
           echo "Bundler version: $(bundle -v)"
-          bundle config path $BUNDLE_PATH
-          bundle config deployment true
-          bundle config clean true
+          echo "Jekyll version: $(bundle exec jekyll -v)"
+          bundle exec jekyll doctor
 
-      - name: Install dependencies
+      - name: Build with Jekyll (with extended timeout)
+        timeout-minutes: 15
         run: |
-          bundle install --jobs 4 --retry 3
-          bundle list
+          set -exo pipefail
+          bundle exec jekyll build \
+            --trace \
+            --verbose \
+            --config _config.yml \
+            --destination ./_site \
+            2>&1 | tee build.log
+          [ -s ./_site/index.html ] || (echo "No index.html generated" && exit 1)
 
-      - name: Debug - Check Jekyll
-        run: |
-          jekyll --version
-          jekyll doctor
+      - name: Upload build logs (for debugging)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: build.log
+          retention-days: 1
 
-      - name: Build with Jekyll (with retry)
-        id: jekyll-build
-        continue-on-error: false
-        run: |
-          set -x  # Enable debug output
-          retry_count=0
-          max_retries=2
-          
-          until [ $retry_count -ge $max_retries ]
-          do
-            jekyll build --trace --verbose && break
-            retry_count=$((retry_count+1))
-            echo "Build failed (attempt $retry_count/$max_retries), retrying..."
-            sleep 5
-          done
-          
-          if [ $retry_count -eq $max_retries ]; then
-            echo "::error::Jekyll build failed after $max_retries attempts"
-            exit 1
-          fi
-
-      - name: Upload artifact
-        if: steps.jekyll-build.outcome == 'success'
+      - name: Upload site artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: jekyll-site
