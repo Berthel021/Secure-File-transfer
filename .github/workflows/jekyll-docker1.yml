@@ -1,0 +1,56 @@
+name: Jekyll site CI with Docker
+
+on:
+  push:
+    branches: [ main ] # or whatever your default branch is
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: jekyll/jekyll:latest
+      
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Cache gems
+        uses: actions/cache@v3
+        with:
+          path: vendor/bundle
+          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gems-
+
+      - name: Build with Jekyll
+        run: |
+          jekyll build --trace
+
+      - name: Archive production site
+        uses: actions/upload-artifact@v3
+        with:
+          name: jekyll-site
+          path: ./_site
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: jekyll-site
+          path: ./_site
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
