@@ -22,24 +22,39 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Required for proper Git history in Jekyll
+          fetch-depth: 0
 
-      - name: Setup Ruby environment
+      - name: Setup system dependencies
         run: |
           sudo apt-get update -qq
-          sudo gem install bundler -v 2.4.22
-          bundle config path $BUNDLE_PATH
-          bundle config deployment true
+          sudo apt-get install -y build-essential cmake ruby-dev
 
-      - name: Install dependencies
-        run: bundle install --jobs 4 --retry 3
+      - name: Verify Ruby environment
+        run: |
+          echo "Ruby path: $(which ruby)"
+          echo "Ruby version: $(ruby -v)"
+          echo "Gem path: $(which gem)"
+          gem env
+
+      - name: Install Bundler explicitly
+        run: |
+          sudo gem install bundler -v 2.4.22 -N
+          echo "Bundler path: $(which bundle)"
+
+      - name: Install project dependencies
+        run: |
+          bundle config set path $BUNDLE_PATH
+          bundle config set deployment true
+          bundle install --jobs 4 --retry 3
 
       - name: Build with Jekyll
         run: |
+          echo "Jekyll path: $(which jekyll)"
           bundle exec jekyll build --trace --verbose
-          [ -f ./_site/index.html ] || { echo "Error: No index.html generated"; exit 1; }
+          ls -la ./_site
 
       - name: Upload artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: jekyll-site
@@ -48,40 +63,23 @@ jobs:
 
   deploy:
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && needs.build.result == 'success'
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: gh-pages  # Checkout the gh-pages branch directly
-          clean: false  # Preserve existing files
 
-      - name: Download built site
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: jekyll-site
-          path: ./_site_temp
+          path: ./_site
 
-      - name: Prepare deployment
-        run: |
-          # Remove all files except .git
-          if [ -d .git ]; then
-            find . -path ./.git -prune -o -exec rm -rf {} \; 2> /dev/null || true
-          fi
-          
-          # Move new files into place
-          mv ./_site_temp/* .
-          rm -rf ./_site_temp
-          
-          # Configure git
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git config --global --add safe.directory /github/workspace
-
-      - name: Commit and push
-        run: |
-          git add -A
-          git commit -m "Deploy Jekyll site $(date +'%Y-%m-%d %H:%M:%S')" --allow-empty
-          git push origin gh-pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          keep_files: false
+          force_orphan: true
