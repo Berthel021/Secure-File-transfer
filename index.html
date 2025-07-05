@@ -5,12 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Blockchain Document Sharing: Guide & Demo</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Modern Tech Blue & Calm Harmony -->
+    <!-- Application Structure Plan: This SPA merges two previous artifacts into a single, vertically scrolling webpage with two primary sections: an interactive conceptual guide and a functional dApp simulation. A sticky navigation bar allows users to jump to any major part of the page. This structure was chosen to create a comprehensive learning journey, allowing a user to understand the theory via the guide and then immediately apply that knowledge in the practical simulation, all within one seamless experience. -->
+    <!-- Visualization & Content Choices: The content choices from the previous artifacts are maintained. The guide uses interactive HTML/CSS diagrams to explain concepts, and the dApp simulation uses HTML forms and dynamic lists to mimic a real application's workflow. The combination provides a mix of high-level conceptual visualization and low-level user interface simulation. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
+            background-color: #f8fafc; /* Consistent light background */
         }
         .section-fade-in {
             opacity: 0;
@@ -66,313 +69,342 @@
         .status-log-item.visible { opacity: 1; transform: translateY(0); }
         .spinner { border: 2px solid rgba(0,0,0,0.1); width: 16px; height: 16px; border-radius: 50%; border-left-color: #3b82f6; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .key-display { font-family: monospace; background-color: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; }
     </style>
 </head>
 <body>
-    <!-- [Previous HTML content remains exactly the same until the dApp simulation section] -->
-
-    <!-- SECTION 2: DAPP SIMULATION -->
-    <section id="simulation" class="pt-12 section-fade-in">
-         <div class="w-full max-w-4xl mx-auto">
-            <header class="text-center mb-8">
-                <h1 class="text-3xl md:text-4xl font-bold text-gray-900">dApp File Transfer Simulation</h1>
-                <p class="text-gray-600 mt-2">Now, try it yourself. This interactive demo simulates the dApp's front-end, allowing you to perform the file sharing process.</p>
-            </header>
-
-            <div class="bg-white rounded-xl shadow-2xl overflow-hidden">
-                <div class="border-b border-gray-200">
-                    <nav class="-mb-px flex" aria-label="Tabs">
-                        <button id="tab-alice" class="tab active w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm">👩 Alice (Sender)</button>
-                        <button id="tab-bob" class="tab w-1/2 py-4 px-1 text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">👨 Bob (Receiver)</button>
-                    </nav>
+    <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <a href="#guide" class="text-xl font-bold text-gray-900">Blockchain Guide & Demo</a>
                 </div>
-
-                <div id="view-alice" class="view active p-6 md:p-8">
-                    <div class="grid md:grid-cols-2 gap-8">
-                        <div>
-                            <div id="alice-wallet-disconnected" class="text-center p-6 bg-gray-50 rounded-lg">
-                                <h3 class="font-semibold text-gray-800">Connect Your Wallet</h3>
-                                <p class="text-sm text-gray-500 mb-4">Connect your MetaMask wallet to manage your documents.</p>
-                                <button id="alice-connect-btn" class="btn-primary w-full py-2 rounded-md font-semibold">Connect Wallet</button>
-                            </div>
-                            <div id="alice-wallet-connected" class="hidden">
-                                <div class="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg mb-6">
-                                    <div><p class="font-semibold text-green-800">Wallet Connected</p><p id="alice-address" class="text-xs text-green-600 truncate">0x1234...abcd</p></div><span class="text-2xl">✅</span>
-                                </div>
-                                <div class="mb-6">
-                                    <h3 class="font-semibold text-gray-800 mb-2">1. Upload a New Document</h3>
-                                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                                        <input type="file" id="file-input" class="hidden"><button id="select-file-btn" class="text-blue-600 font-semibold">Select a file</button><p id="file-name" class="text-sm text-gray-500 mt-1">No file selected.</p>
-                                    </div>
-                                    <div id="encryption-key-section" class="mt-4 hidden">
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Encryption Key</label>
-                                        <div class="flex items-center gap-2">
-                                            <input type="text" id="encryption-key" class="flex-grow p-2 border border-gray-300 rounded-md" placeholder="Enter a strong passphrase" value="">
-                                            <button id="generate-key-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-3 rounded-md text-sm">Generate</button>
-                                        </div>
-                                        <p class="text-xs text-gray-500 mt-1">This key will be used to encrypt your file. Save it securely!</p>
-                                    </div>
-                                    <button id="upload-btn" class="btn-primary w-full py-2 mt-4 rounded-md font-semibold" disabled>Upload & Register</button>
-                                </div>
-                                <div id="grant-access-section" class="hidden">
-                                    <h3 class="font-semibold text-gray-800 mb-2">2. Grant Access</h3>
-                                    <p class="text-sm text-gray-500 mb-2">Enter the recipient's wallet address to share the document.</p>
-                                    <input type="text" id="recipient-address" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Bob's Address: 0x5678...efgh">
-                                    <div class="mt-2">
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Share Encryption Key</label>
-                                        <div class="flex items-center gap-2">
-                                            <input type="text" id="shared-key" class="flex-grow p-2 border border-gray-300 rounded-md bg-gray-100" readonly>
-                                            <button id="copy-key-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-3 rounded-md text-sm">Copy</button>
-                                        </div>
-                                        <p class="text-xs text-gray-500 mt-1">The recipient will need this key to decrypt the file.</p>
-                                    </div>
-                                    <button id="grant-btn" class="btn-primary w-full py-2 mt-2 rounded-md font-semibold" disabled>Grant Access</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <h3 class="font-semibold text-gray-800 mb-2">Activity Log</h3>
-                            <div id="alice-status-log" class="h-48 bg-gray-900 text-white rounded-lg p-4 overflow-y-auto font-mono text-xs"><p class="text-gray-400">Awaiting actions...</p></div>
-                            <h3 class="font-semibold text-gray-800 mt-6 mb-2">My Documents</h3>
-                            <div id="alice-docs-list" class="space-y-2"><p class="text-sm text-gray-500 text-center p-4 bg-gray-50 rounded-lg">No documents uploaded yet.</p></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="view-bob" class="view p-6 md:p-8">
-                     <div id="bob-wallet-disconnected" class="text-center p-6 bg-gray-50 rounded-lg max-w-md mx-auto">
-                        <h3 class="font-semibold text-gray-800">Connect Your Wallet</h3>
-                        <p class="text-sm text-gray-500 mb-4">Connect your wallet to see documents shared with you.</p>
-                        <button id="bob-connect-btn" class="btn-primary w-full py-2 rounded-md font-semibold">Connect Wallet</button>
-                    </div>
-                    <div id="bob-wallet-connected" class="hidden">
-                         <div class="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg mb-6 max-w-md mx-auto">
-                            <div><p class="font-semibold text-green-800">Wallet Connected</p><p id="bob-address" class="text-xs text-green-600 truncate">0x5678...efgh</p></div><span class="text-2xl">✅</span>
-                        </div>
-                        <h3 class="font-semibold text-gray-800 mb-2 text-center">Documents Shared With Me</h3>
-                        <div id="bob-docs-list" class="max-w-md mx-auto space-y-2"><p class="text-sm text-gray-500 text-center p-4 bg-gray-50 rounded-lg">No documents have been shared with you yet.</p></div>
-                        <div id="bob-decrypt-section" class="max-w-md mx-auto mt-4 hidden">
-                            <h4 class="font-semibold text-gray-800 mb-2">Decrypt Document</h4>
-                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                <div class="mb-3">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Enter Encryption Key</label>
-                                    <input type="text" id="decryption-key" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Paste the key shared with you">
-                                </div>
-                                <button id="decrypt-btn" class="btn-primary w-full py-2 rounded-md font-semibold">Decrypt & Download</button>
-                            </div>
-                        </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#principles" class="nav-link text-gray-600 hover:text-blue-500 px-3 py-2 rounded-md text-sm font-medium border-b-2 border-transparent">Principles</a>
+                        <a href="#architecture" class="nav-link text-gray-600 hover:text-blue-500 px-3 py-2 rounded-md text-sm font-medium border-b-2 border-transparent">Architecture</a>
+                        <a href="#workflow" class="nav-link text-gray-600 hover:text-blue-500 px-3 py-2 rounded-md text-sm font-medium border-b-2 border-transparent">Workflow</a>
+                        <a href="#simulation" class="nav-link text-gray-600 hover:text-blue-500 px-3 py-2 rounded-md text-sm font-medium border-b-2 border-transparent">dApp Simulation</a>
                     </div>
                 </div>
             </div>
         </div>
-    </section>
+    </nav>
 
-    <!-- [Rest of the HTML content remains exactly the same] -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <!-- SECTION 1: INTERACTIVE GUIDE -->
+        <section id="guide">
+            <header class="text-center mb-24 section-fade-in">
+                <h2 class="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight">Rethinking Document Security</h2>
+                <p class="mt-4 max-w-2xl mx-auto text-lg text-gray-600">Explore an interactive guide to a decentralized platform that leverages blockchain for truly secure and transparent document sharing, moving beyond the limitations of traditional, centralized systems.</p>
+            </header>
+            
+            <section id="principles" class="mb-24 section-fade-in">
+                <div class="text-center mb-12">
+                    <h3 class="text-3xl font-bold text-gray-900">Core Principles</h3>
+                    <p class="mt-2 text-md text-gray-500 max-w-2xl mx-auto">This platform is built on four foundational ideas that distinguish it from conventional cloud storage. Click on each principle to learn more about its role in creating a secure and resilient system.</p>
+                </div>
+                <div id="principles-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"></div>
+            </section>
+
+            <section id="architecture" class="mb-24 section-fade-in">
+                <div class="text-center mb-12">
+                    <h3 class="text-3xl font-bold text-gray-900">High-Level Architecture</h3>
+                    <p class="mt-2 text-md text-gray-500 max-w-2xl mx-auto">The system is composed of three interconnected layers that work together to manage data, logic, and user interaction. Click on any component in the diagram below to see how it contributes to the overall architecture.</p>
+                </div>
+                <div class="lg:flex lg:items-start lg:gap-8">
+                    <div id="architecture-diagram" class="flex-grow bg-white p-8 rounded-xl shadow-lg relative min-h-[400px]"></div>
+                    <div id="architecture-info" class="lg:w-1/3 mt-8 lg:mt-0 bg-blue-50 p-6 rounded-xl border border-blue-200">
+                        <h4 id="info-title" class="text-xl font-bold text-blue-800">Click a Component</h4>
+                        <p id="info-text" class="mt-2 text-blue-700">Select a component from the diagram to learn about its function and responsibilities within the platform.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="workflow" class="mb-24 section-fade-in">
+                <div class="text-center mb-12">
+                    <h3 class="text-3xl font-bold text-gray-900">Interactive Workflow Simulation</h3>
+                    <p class="mt-2 text-md text-gray-500 max-w-2xl mx-auto">See the platform in action. This simulation demonstrates the step-by-step process of uploading, sharing, and accessing a document between two users, Alice and Bob. Press "Next" to advance the workflow.</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-8 relative">
+                    <div class="w-full h-80 md:h-96 relative mb-8" id="workflow-canvas">
+                        <div id="workflow-doc" class="p-2 bg-blue-500 rounded-lg text-white shadow-lg flex items-center gap-2" style="top: 40%; left: 10%;"><span class="text-2xl">📄</span><span>Doc</span></div>
+                        <div id="alice" class="workflow-actor absolute top-[40%] left-[10%] text-center"><div class="text-5xl">👩</div><div class="font-bold">Alice</div><div class="text-sm text-gray-500">(Owner)</div></div>
+                        <div id="bob" class="workflow-actor absolute top-[40%] right-[10%] text-center"><div class="text-5xl">👨</div><div class="font-bold">Bob</div><div class="text-sm text-gray-500">(Recipient)</div></div>
+                        <div id="ipfs" class="workflow-actor absolute top-[10%] left-1/2 -translate-x-1/2 text-center"><div class="text-5xl">📦</div><div class="font-bold">IPFS Storage</div></div>
+                        <div id="blockchain" class="workflow-actor absolute bottom-[10%] left-1/2 -translate-x-1/2 text-center"><div class="text-5xl">🔗</div><div class="font-bold">Blockchain</div></div>
+                    </div>
+                    <div class="text-center">
+                        <p id="workflow-explanation" class="text-lg text-gray-700 min-h-[3em] mb-4">Welcome! Let's start the secure document sharing process.</p>
+                        <div id="workflow-loader" class="flex justify-center items-center h-8 my-2 hidden"><div class="dot-pulse"></div></div>
+                        <button id="workflow-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors">Start</button>
+                    </div>
+                </div>
+            </section>
+        </section>
+
+        <!-- SECTION 2: DAPP SIMULATION -->
+        <section id="simulation" class="pt-12 section-fade-in">
+             <div class="w-full max-w-4xl mx-auto">
+                <header class="text-center mb-8">
+                    <h1 class="text-3xl md:text-4xl font-bold text-gray-900">dApp File Transfer Simulation</h1>
+                    <p class="text-gray-600 mt-2">Now, try it yourself. This interactive demo simulates the dApp's front-end, allowing you to perform the file sharing process.</p>
+                </header>
+
+                <div class="bg-white rounded-xl shadow-2xl overflow-hidden">
+                    <div class="border-b border-gray-200">
+                        <nav class="-mb-px flex" aria-label="Tabs">
+                            <button id="tab-alice" class="tab active w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm">👩 Alice (Sender)</button>
+                            <button id="tab-bob" class="tab w-1/2 py-4 px-1 text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">👨 Bob (Receiver)</button>
+                        </nav>
+                    </div>
+
+                    <div id="view-alice" class="view active p-6 md:p-8">
+                        <div class="grid md:grid-cols-2 gap-8">
+                            <div>
+                                <div id="alice-wallet-disconnected" class="text-center p-6 bg-gray-50 rounded-lg">
+                                    <h3 class="font-semibold text-gray-800">Connect Your Wallet</h3>
+                                    <p class="text-sm text-gray-500 mb-4">Connect your MetaMask wallet to manage your documents.</p>
+                                    <button id="alice-connect-btn" class="btn-primary w-full py-2 rounded-md font-semibold">Connect Wallet</button>
+                                </div>
+                                <div id="alice-wallet-connected" class="hidden">
+                                    <div class="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg mb-6">
+                                        <div><p class="font-semibold text-green-800">Wallet Connected</p><p id="alice-address" class="text-xs text-green-600 truncate">0x1234...abcd</p></div><span class="text-2xl">✅</span>
+                                    </div>
+                                    <div class="mb-6">
+                                        <h3 class="font-semibold text-gray-800 mb-2">1. Upload a New Document</h3>
+                                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                                            <input type="file" id="file-input" class="hidden"><button id="select-file-btn" class="text-blue-600 font-semibold">Select a file</button><p id="file-name" class="text-sm text-gray-500 mt-1">No file selected.</p>
+                                        </div>
+                                        <button id="upload-btn" class="btn-primary w-full py-2 mt-4 rounded-md font-semibold" disabled>Upload & Register</button>
+                                    </div>
+                                    <div id="grant-access-section" class="hidden">
+                                        <h3 class="font-semibold text-gray-800 mb-2">2. Grant Access</h3>
+                                        <p class="text-sm text-gray-500 mb-2">Enter the recipient's wallet address to share the document.</p>
+                                        <input type="text" id="recipient-address" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Bob's Address: 0x5678...efgh">
+                                        <button id="grant-btn" class="btn-primary w-full py-2 mt-2 rounded-md font-semibold" disabled>Grant Access</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-800 mb-2">Activity Log</h3>
+                                <div id="alice-status-log" class="h-48 bg-gray-900 text-white rounded-lg p-4 overflow-y-auto font-mono text-xs"><p class="text-gray-400">Awaiting actions...</p></div>
+                                <h3 class="font-semibold text-gray-800 mt-6 mb-2">My Documents</h3>
+                                <div id="alice-docs-list" class="space-y-2"><p class="text-sm text-gray-500 text-center p-4 bg-gray-50 rounded-lg">No documents uploaded yet.</p></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="view-bob" class="view p-6 md:p-8">
+                         <div id="bob-wallet-disconnected" class="text-center p-6 bg-gray-50 rounded-lg max-w-md mx-auto">
+                            <h3 class="font-semibold text-gray-800">Connect Your Wallet</h3>
+                            <p class="text-sm text-gray-500 mb-4">Connect your wallet to see documents shared with you.</p>
+                            <button id="bob-connect-btn" class="btn-primary w-full py-2 rounded-md font-semibold">Connect Wallet</button>
+                        </div>
+                        <div id="bob-wallet-connected" class="hidden">
+                             <div class="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg mb-6 max-w-md mx-auto">
+                                <div><p class="font-semibold text-green-800">Wallet Connected</p><p id="bob-address" class="text-xs text-green-600 truncate">0x5678...efgh</p></div><span class="text-2xl">✅</span>
+                            </div>
+                            <h3 class="font-semibold text-gray-800 mb-2 text-center">Documents Shared With Me</h3>
+                            <div id="bob-docs-list" class="max-w-md mx-auto space-y-2"><p class="text-sm text-gray-500 text-center p-4 bg-gray-50 rounded-lg">No documents have been shared with you yet.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white mt-24">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 text-center">
+            <p>A Comprehensive Interactive Guide to Decentralized Technology.</p>
+        </div>
+    </footer>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- ENCRYPTION/DECRYPTION FUNCTIONS ---
-        function generateRandomKey() {
-            return CryptoJS.lib.WordArray.random(32).toString();
-        }
-
-        function encryptFile(file, key) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const wordArray = CryptoJS.lib.WordArray.create(e.target.result);
-                        const encrypted = CryptoJS.AES.encrypt(wordArray, key).toString();
-                        resolve(encrypted);
-                    } catch (error) {
-                        reject(error);
-                    }
-                };
-                reader.onerror = reject;
-                reader.readAsArrayBuffer(file);
-            });
-        }
-
-        function decryptFile(encryptedData, key) {
-            try {
-                const decrypted = CryptoJS.AES.decrypt(encryptedData, key);
-                return decrypted.toString(CryptoJS.enc.Utf8);
-            } catch (error) {
-                console.error("Decryption failed:", error);
-                return null;
-            }
-        }
-
-        function simulateIPFSUpload(encryptedData) {
-            // In a real app, this would upload to IPFS
-            return 'Qm' + CryptoJS.SHA256(encryptedData).toString().substring(0, 44);
-        }
-
         // --- SCRIPT FOR INTERACTIVE GUIDE ---
-        // [Previous interactive guide code remains exactly the same]
+        const principlesData = [
+            { icon: '🌐', title: 'Decentralization', text: "Utilizes a distributed network, making it resilient to censorship and single points of failure." },
+            { icon: '🛡️', title: 'Immutability', text: "Creates a permanent, tamper-proof log of all document-related activities." },
+            { icon: '🔒', title: 'Security', text: 'Cryptography ensures documents are encrypted and only accessible by authorized individuals.' },
+            { icon: '👁️', title: 'Transparency (with Privacy)', text: 'The ledger of transactions is transparent, but the document content remains private and encrypted.' },
+        ];
+        const principlesGrid = document.getElementById('principles-grid');
+        principlesData.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'bg-white p-6 rounded-xl shadow-md cursor-pointer hover:shadow-xl transition-shadow';
+            card.innerHTML = `<div class="flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 text-3xl mx-auto mb-4">${p.icon}</div><h4 class="text-xl font-bold text-center">${p.title}</h4><p class="mt-2 text-gray-600 text-center hidden">${p.text}</p>`;
+            card.addEventListener('click', () => card.querySelector('p').classList.toggle('hidden'));
+            principlesGrid.appendChild(card);
+        });
+
+        const architectureData = {
+            nodes: [
+                { id: 'frontend', label: 'Frontend (UI)', top: '5%', left: '50%', transform: '-translate-x-1/2' },
+                { id: 'smart-contracts', label: 'Smart Contracts (Logic)', top: '45%', left: '50%', transform: '-translate-x-1/2' },
+                { id: 'storage', label: 'Decentralized Storage (Data)', top: '85%', left: '50%', transform: '-translate-x-1/2' },
+            ],
+            info: {
+                frontend: { title: "Frontend (UI)", text: "The user's entry point to the system, allowing interaction like uploading and viewing documents." },
+                'smart-contracts': { title: "Smart Contracts (Business Logic)", text: "Self-executing contracts on the blockchain that enforce rules for access control, versioning, and auditing." },
+                storage: { title: "Decentralized Storage (Data Layer)", text: "Where encrypted documents are stored, typically using a system like IPFS to maintain decentralization." }
+            }
+        };
+        const archDiagram = document.getElementById('architecture-diagram');
+        architectureData.nodes.forEach(node => {
+            const el = document.createElement('div');
+            el.id = `node-${node.id}`;
+            el.className = 'architecture-node absolute bg-white border-2 border-gray-300 rounded-lg px-6 py-4 shadow-sm cursor-pointer';
+            el.style.cssText = `top: ${node.top}; left: ${node.left}; transform: ${node.transform};`;
+            el.innerHTML = node.label;
+            el.addEventListener('click', () => {
+                document.querySelectorAll('.architecture-node').forEach(n => n.classList.remove('highlight-node'));
+                el.classList.add('highlight-node');
+                const info = architectureData.info[node.id];
+                document.getElementById('info-title').textContent = info.title;
+                document.getElementById('info-text').textContent = info.text;
+            });
+            archDiagram.appendChild(el);
+        });
+
+        const workflowBtn = document.getElementById('workflow-btn');
+        const workflowExplanation = document.getElementById('workflow-explanation');
+        const workflowDoc = document.getElementById('workflow-doc');
+        const workflowLoader = document.getElementById('workflow-loader');
+        const aliceEl = document.getElementById('alice');
+        const bobEl = document.getElementById('bob');
+        const ipfsEl = document.getElementById('ipfs');
+        const blockchainEl = document.getElementById('blockchain');
+        let guideWorkflowStep = 0;
+        const guideWorkflowSteps = [
+            { explanation: "Alice prepares to upload her document.", action: () => { workflowDoc.style.top = `${aliceEl.offsetTop}px`; workflowDoc.style.left = `${aliceEl.offsetLeft + aliceEl.offsetWidth/2 - workflowDoc.offsetWidth/2}px`; workflowDoc.innerHTML = `<span class="text-2xl">📄</span><span>Doc</span>`; }, buttonText: "1. Encrypt & Upload" },
+            { explanation: "Alice's document is encrypted and uploaded to IPFS.", action: () => { workflowDoc.style.top = `${ipfsEl.offsetTop + ipfsEl.offsetHeight/2 - workflowDoc.offsetHeight/2}px`; workflowDoc.style.left = `${ipfsEl.offsetLeft + ipfsEl.offsetWidth/2 - workflowDoc.offsetWidth/2}px`; workflowDoc.innerHTML = `<span class="text-2xl">🔒</span><span>Encrypted</span>`; }, buttonText: "2. Record on Blockchain" },
+            { explanation: "A transaction records the document's hash and ownership on the blockchain.", action: () => { workflowDoc.style.opacity = '0'; }, buttonText: "3. Grant Access to Bob" },
+            { explanation: "Alice grants Bob access via another transaction.", action: () => { bobEl.classList.add('ring-4', 'ring-green-400', 'rounded-full'); }, buttonText: "4. Bob Accesses Document" },
+            { explanation: "Bob accesses the file, which is fetched from IPFS and decrypted.", action: () => { workflowDoc.style.opacity = '1'; workflowDoc.style.top = `${bobEl.offsetTop}px`; workflowDoc.style.left = `${bobEl.offsetLeft + bobEl.offsetWidth/2 - workflowDoc.offsetWidth/2}px`; workflowDoc.innerHTML = `<span class="text-2xl">📄</span><span>Decrypted</span>`; }, buttonText: "Process Complete! Reset" },
+            { explanation: "Welcome! Let's start the secure document sharing process.", action: () => { bobEl.classList.remove('ring-4', 'ring-green-400', 'rounded-full'); workflowDoc.style.opacity = '1'; workflowDoc.style.top = `${aliceEl.offsetTop}px`; workflowDoc.style.left = `${aliceEl.offsetLeft + aliceEl.offsetWidth/2 - workflowDoc.offsetWidth/2}px`; workflowDoc.innerHTML = `<span class="text-2xl">📄</span><span>Doc</span>`; }, buttonText: "Start" }
+        ];
+        workflowBtn.addEventListener('click', () => {
+            workflowBtn.disabled = true;
+            workflowLoader.classList.remove('hidden');
+            const currentStep = guideWorkflowSteps[guideWorkflowStep];
+            workflowExplanation.textContent = currentStep.explanation;
+            setTimeout(() => {
+                currentStep.action();
+                guideWorkflowStep = (guideWorkflowStep + 1) % guideWorkflowSteps.length;
+                workflowBtn.textContent = guideWorkflowSteps[guideWorkflowStep].buttonText;
+                workflowBtn.disabled = false;
+                workflowLoader.classList.add('hidden');
+            }, 1200);
+        });
+        guideWorkflowSteps[guideWorkflowStep].action();
+        workflowBtn.textContent = guideWorkflowSteps[guideWorkflowStep + 1].buttonText;
+        guideWorkflowStep++;
 
         // --- SCRIPT FOR DAPP SIMULATION ---
         const dAppState = {
-            aliceWalletConnected: false,
-            bobWalletConnected: false,
-            selectedFile: null,
-            uploadedDocument: null,
-            accessGranted: false,
-            encryptionKey: '',
-            aliceAddress: '0x1234567890abcdef1234567890abcdef12345678',
-            bobAddress: '0x567890abcdef1234567890abcdef1234567890ab'
+            aliceWalletConnected: false, bobWalletConnected: false, selectedFile: null, uploadedDocument: null, accessGranted: false,
+            aliceAddress: '0x1234567890abcdef1234567890abcdef12345678', bobAddress: '0x567890abcdef1234567890abcdef1234567890ab'
         };
+        const tabAlice = document.getElementById('tab-alice');
+        const tabBob = document.getElementById('tab-bob');
+        const viewAlice = document.getElementById('view-alice');
+        const viewBob = document.getElementById('view-bob');
+        const aliceConnectBtn = document.getElementById('alice-connect-btn');
+        const aliceWalletDisconnected = document.getElementById('alice-wallet-disconnected');
+        const aliceWalletConnected = document.getElementById('alice-wallet-connected');
+        const aliceAddressEl = document.getElementById('alice-address');
+        const bobConnectBtn = document.getElementById('bob-connect-btn');
+        const bobWalletDisconnected = document.getElementById('bob-wallet-disconnected');
+        const bobWalletConnected = document.getElementById('bob-wallet-connected');
+        const bobAddressEl = document.getElementById('bob-address');
+        const selectFileBtn = document.getElementById('select-file-btn');
+        const fileInput = document.getElementById('file-input');
+        const fileNameEl = document.getElementById('file-name');
+        const uploadBtn = document.getElementById('upload-btn');
+        const grantAccessSection = document.getElementById('grant-access-section');
+        const grantBtn = document.getElementById('grant-btn');
+        const recipientAddressInput = document.getElementById('recipient-address');
+        const aliceStatusLog = document.getElementById('alice-status-log');
+        const aliceDocsList = document.getElementById('alice-docs-list');
+        const bobDocsList = document.getElementById('bob-docs-list');
 
-        // [Previous DOM element selections remain the same, plus new ones:]
-        const encryptionKeySection = document.getElementById('encryption-key-section');
-        const encryptionKeyInput = document.getElementById('encryption-key');
-        const generateKeyBtn = document.getElementById('generate-key-btn');
-        const sharedKeyInput = document.getElementById('shared-key');
-        const copyKeyBtn = document.getElementById('copy-key-btn');
-        const bobDecryptSection = document.getElementById('bob-decrypt-section');
-        const decryptionKeyInput = document.getElementById('decryption-key');
-        const decryptBtn = document.getElementById('decrypt-btn');
-
-        // [Previous helper functions like switchDappView, addLog, updateAliceDocs remain the same]
-
+        function switchDappView(view) {
+            if (view === 'alice') {
+                tabAlice.classList.add('active'); tabBob.classList.remove('active'); viewAlice.classList.add('active'); viewBob.classList.remove('active');
+            } else {
+                tabBob.classList.add('active'); tabAlice.classList.remove('active'); viewBob.classList.add('active'); viewAlice.classList.remove('active');
+            }
+        }
+        function addLog(logEl, text, type = 'info') {
+            if (logEl.querySelector('p.text-gray-400')) logEl.innerHTML = '';
+            const item = document.createElement('div');
+            let icon = type === 'process' ? '<div class="spinner mr-2"></div>' : type === 'success' ? '<span class="mr-2">✅</span>' : type === 'error' ? '<span class="mr-2">❌</span>' : '<span class="mr-2">ℹ️</span>';
+            let colorClass = type === 'process' ? 'bg-gray-700 text-gray-300' : type === 'success' ? 'bg-green-800 text-green-200' : type === 'error' ? 'bg-red-800 text-red-200' : 'bg-blue-800 text-blue-200';
+            item.className = 'status-log-item ' + colorClass;
+            item.innerHTML = `${icon}<span>${text}</span>`;
+            logEl.appendChild(item);
+            setTimeout(() => item.classList.add('visible'), 50);
+            logEl.scrollTop = logEl.scrollHeight;
+            return item;
+        }
+        function updateAliceDocs() {
+            if (!dAppState.uploadedDocument) { aliceDocsList.innerHTML = '<p class="text-sm text-gray-500 text-center p-4 bg-gray-50 rounded-lg">No documents uploaded yet.</p>'; return; }
+            const doc = dAppState.uploadedDocument;
+            const accessStatus = dAppState.accessGranted ? `<span class="text-xs font-medium bg-green-100 text-green-800 py-0.5 px-2 rounded-full">Shared</span>` : `<span class="text-xs font-medium bg-yellow-100 text-yellow-800 py-0.5 px-2 rounded-full">Private</span>`;
+            aliceDocsList.innerHTML = `<div class="bg-gray-50 p-3 rounded-lg flex justify-between items-center"><div><p class="font-semibold text-gray-800">${doc.name}</p><p class="text-xs text-gray-500">Hash: ${doc.hash.substring(0, 16)}...</p></div>${accessStatus}</div>`;
+        }
         function updateBobDocs() {
             if (dAppState.accessGranted) {
                 const doc = dAppState.uploadedDocument;
-                bobDocsList.innerHTML = `
-                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <div class="flex justify-between items-center mb-3">
-                            <div>
-                                <p class="font-semibold text-blue-800">${doc.name}</p>
-                                <p class="text-xs text-blue-600">From: ${dAppState.aliceAddress.substring(0, 10)}...</p>
-                            </div>
-                        </div>
-                        <p class="text-sm text-gray-700 mb-3">This document has been shared with you. You'll need the encryption key to access it.</p>
-                    </div>`;
-                bobDecryptSection.classList.remove('hidden');
+                bobDocsList.innerHTML = `<div class="bg-blue-50 p-4 rounded-lg border border-blue-200"><div class="flex justify-between items-center"><div><p class="font-semibold text-blue-800">${doc.name}</p><p class="text-xs text-blue-600">From: ${dAppState.aliceAddress.substring(0, 10)}...</p></div><button class="bg-blue-500 text-white text-sm font-semibold px-3 py-1 rounded-md hover:bg-blue-600">Download</button></div></div>`;
             } else {
                 bobDocsList.innerHTML = '<p class="text-sm text-gray-500 text-center p-4 bg-gray-50 rounded-lg">No documents have been shared with you yet.</p>';
-                bobDecryptSection.classList.add('hidden');
             }
         }
-
-        // [Previous event listeners for tabs, wallet connections remain the same]
-
+        tabAlice.addEventListener('click', () => switchDappView('alice'));
+        tabBob.addEventListener('click', () => switchDappView('bob'));
+        aliceConnectBtn.addEventListener('click', () => {
+            dAppState.aliceWalletConnected = true; aliceWalletDisconnected.classList.add('hidden'); aliceWalletConnected.classList.remove('hidden'); aliceAddressEl.textContent = dAppState.aliceAddress; addLog(aliceStatusLog, 'Wallet connected successfully.', 'success');
+        });
+        bobConnectBtn.addEventListener('click', () => {
+            dAppState.bobWalletConnected = true; bobWalletDisconnected.classList.add('hidden'); bobWalletConnected.classList.remove('hidden'); bobAddressEl.textContent = dAppState.bobAddress;
+        });
         selectFileBtn.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                dAppState.selectedFile = e.target.files[0];
-                fileNameEl.textContent = dAppState.selectedFile.name;
-                encryptionKeySection.classList.remove('hidden');
-                if (!encryptionKeyInput.value) {
-                    encryptionKeyInput.value = generateRandomKey();
-                }
-                uploadBtn.disabled = false;
-            }
+            if (e.target.files.length > 0) { dAppState.selectedFile = e.target.files[0]; fileNameEl.textContent = dAppState.selectedFile.name; uploadBtn.disabled = false; }
         });
-
-        generateKeyBtn.addEventListener('click', () => {
-            encryptionKeyInput.value = generateRandomKey();
-        });
-
         uploadBtn.addEventListener('click', async () => {
-            uploadBtn.disabled = true;
-            dAppState.encryptionKey = encryptionKeyInput.value;
-            
-            addLog(aliceStatusLog, 'Encrypting file locally...', 'process');
-            try {
-                // Simulate encryption process
-                await new Promise(res => setTimeout(res, 1500));
-                
-                addLog(aliceStatusLog, 'Uploading to IPFS...', 'process');
-                await new Promise(res => setTimeout(res, 2000));
-                
-                // In a real app, we would actually encrypt and upload
-                const simulatedHash = simulateIPFSUpload("encrypted-data");
-                
-                dAppState.uploadedDocument = {
-                    name: dAppState.selectedFile.name,
-                    hash: simulatedHash,
-                    encrypted: true
-                };
-                
-                addLog(aliceStatusLog, 'Sending transaction to smart contract...', 'process');
-                await new Promise(res => setTimeout(res, 2500));
-                
-                addLog(aliceStatusLog, `Document registered on blockchain.`, 'success');
-                grantAccessSection.classList.remove('hidden');
-                sharedKeyInput.value = dAppState.encryptionKey;
-                updateAliceDocs();
-            } catch (error) {
-                addLog(aliceStatusLog, 'Error during file processing: ' + error.message, 'error');
-                uploadBtn.disabled = false;
-            }
+            uploadBtn.disabled = true; addLog(aliceStatusLog, 'Encrypting file locally...', 'process'); await new Promise(res => setTimeout(res, 1500));
+            addLog(aliceStatusLog, 'Uploading to IPFS...', 'process'); await new Promise(res => setTimeout(res, 2000));
+            dAppState.uploadedDocument = { name: dAppState.selectedFile.name, hash: 'Qm' + Array(44).fill(0).map(() => 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.charAt(Math.floor(Math.random() * 62))).join('') };
+            addLog(aliceStatusLog, 'Sending transaction to smart contract...', 'process'); await new Promise(res => setTimeout(res, 2500));
+            addLog(aliceStatusLog, `Document registered on blockchain.`, 'success'); grantAccessSection.classList.remove('hidden'); updateAliceDocs();
         });
-
-        copyKeyBtn.addEventListener('click', () => {
-            sharedKeyInput.select();
-            document.execCommand('copy');
-            addLog(aliceStatusLog, 'Encryption key copied to clipboard', 'success');
-        });
-
-        // [Previous grant access event listener remains the same, but update the success message]
+        recipientAddressInput.addEventListener('keyup', () => { grantBtn.disabled = recipientAddressInput.value.trim() === ''; });
         grantBtn.addEventListener('click', async () => {
-            grantBtn.disabled = true;
-            const recipient = recipientAddressInput.value.trim();
-            if (recipient.toLowerCase() !== dAppState.bobAddress.toLowerCase() && recipient !== "0x5678...efgh") {
-                addLog(aliceStatusLog, 'Error: Recipient address does not match Bob\'s.', 'error');
-                grantBtn.disabled = false;
-                return;
-            }
-            addLog(aliceStatusLog, 'Preparing access grant transaction...', 'process');
-            await new Promise(res => setTimeout(res, 1500));
-            addLog(aliceStatusLog, 'Updating smart contract permissions...', 'process');
-            await new Promise(res => setTimeout(res, 2000));
-            dAppState.accessGranted = true;
-            addLog(aliceStatusLog, `Access granted to ${dAppState.bobAddress.substring(0,10)}...`, 'success');
-            addLog(aliceStatusLog, `IMPORTANT: Share this key securely: ${dAppState.encryptionKey}`, 'info');
-            updateAliceDocs();
-            updateBobDocs();
+            grantBtn.disabled = true; const recipient = recipientAddressInput.value.trim();
+            if (recipient.toLowerCase() !== dAppState.bobAddress.toLowerCase() && recipient !== "0x5678...efgh") { addLog(aliceStatusLog, 'Error: Recipient address does not match Bob\'s.', 'error'); grantBtn.disabled = false; return; }
+            addLog(aliceStatusLog, 'Preparing access grant transaction...', 'process'); await new Promise(res => setTimeout(res, 1500));
+            addLog(aliceStatusLog, 'Updating smart contract permissions...', 'process'); await new Promise(res => setTimeout(res, 2000));
+            dAppState.accessGranted = true; addLog(aliceStatusLog, `Access granted to ${dAppState.bobAddress.substring(0,10)}...`, 'success');
+            updateAliceDocs(); updateBobDocs();
         });
 
-        decryptBtn.addEventListener('click', async () => {
-            const key = decryptionKeyInput.value.trim();
-            if (!key) {
-                addLog(aliceStatusLog, 'Please enter the decryption key', 'error');
-                return;
-            }
-            
-            decryptBtn.disabled = true;
-            decryptBtn.innerHTML = '<div class="spinner mr-2"></div> Decrypting...';
-            
-            try {
-                // Simulate decryption process
-                await new Promise(res => setTimeout(res, 2000));
-                
-                // In a real app, we would fetch and decrypt the actual file
-                const decryptedContent = "Simulated decrypted content of " + dAppState.uploadedDocument.name;
-                
-                // Create download link
-                const blob = new Blob([decryptedContent], { type: 'text/plain' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = dAppState.uploadedDocument.name;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                
-                addLog(aliceStatusLog, 'Document decrypted and downloaded successfully!', 'success');
-            } catch (error) {
-                addLog(aliceStatusLog, 'Decryption failed. Please check the key and try again.', 'error');
-            } finally {
-                decryptBtn.disabled = false;
-                decryptBtn.textContent = 'Decrypt & Download';
-            }
-        });
-
-        // [Rest of the script remains the same]
+        // --- SCRIPT FOR PAGE-WIDE FUNCTIONALITY ---
+        const sections = document.querySelectorAll('.section-fade-in');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('section-visible');
+                    const id = entry.target.getAttribute('id');
+                    navLinks.forEach(link => {
+                        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+                    });
+                }
+            });
+        }, { rootMargin: '-40% 0px -40% 0px', threshold: 0 });
+        sections.forEach(section => observer.observe(section));
     });
     </script>
 </body>
