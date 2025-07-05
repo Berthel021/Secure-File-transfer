@@ -2,9 +2,12 @@ name: Jekyll site CI with Docker
 
 on:
   push:
-    branches: [ main ] # or whatever your default branch is
+    branches: [ main ]
   pull_request:
     branches: [ main ]
+
+env:
+  JEKYLL_ENV: production
 
 jobs:
   build:
@@ -13,8 +16,8 @@ jobs:
       image: jekyll/jekyll:latest
       
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Cache gems
         uses: actions/cache@v3
@@ -24,15 +27,21 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gems-
 
+      - name: Install dependencies
+        run: |
+          bundle config path vendor/bundle
+          bundle install
+
       - name: Build with Jekyll
         run: |
           jekyll build --trace
 
-      - name: Archive production site
-        uses: actions/upload-artifact@v3
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
           name: jekyll-site
           path: ./_site
+          retention-days: 1
 
   deploy:
     needs: build
@@ -40,11 +49,11 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: jekyll-site
           path: ./_site
@@ -54,3 +63,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_site
+          keep_files: false
