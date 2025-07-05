@@ -9,39 +9,64 @@ on:
 env:
   JEKYLL_ENV: production
   BUNDLE_PATH: vendor/bundle
+  BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
 
 jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: jekyll/jekyll:latest
+      image: jekyll/builder:latest
       
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Cache gems
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.BUNDLE_PATH }}
-          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-gems-
+      - name: Debug - List files
+        run: ls -la
+        if: always()
 
-      - name: Set up Ruby
+      - name: Setup Ruby
         run: |
-          bundle config path ${{ env.BUNDLE_PATH }}
-          bundle install
+          echo "Ruby version: $(ruby -v)"
+          echo "Bundler version: $(bundle -v)"
+          bundle config path $BUNDLE_PATH
+          bundle config deployment true
+          bundle config clean true
 
-      - name: Build with Jekyll
+      - name: Install dependencies
         run: |
-          jekyll build --trace --verbose
+          bundle install --jobs 4 --retry 3
+          bundle list
+
+      - name: Debug - Check Jekyll
+        run: |
+          jekyll --version
+          jekyll doctor
+
+      - name: Build with Jekyll (with retry)
+        id: jekyll-build
         continue-on-error: false
-        timeout-minutes: 10
+        run: |
+          set -x  # Enable debug output
+          retry_count=0
+          max_retries=2
+          
+          until [ $retry_count -ge $max_retries ]
+          do
+            jekyll build --trace --verbose && break
+            retry_count=$((retry_count+1))
+            echo "Build failed (attempt $retry_count/$max_retries), retrying..."
+            sleep 5
+          done
+          
+          if [ $retry_count -eq $max_retries ]; then
+            echo "::error::Jekyll build failed after $max_retries attempts"
+            exit 1
+          fi
 
       - name: Upload artifact
+        if: steps.jekyll-build.outcome == 'success'
         uses: actions/upload-artifact@v4
-        if: success()
         with:
           name: jekyll-site
           path: ./_site
@@ -49,7 +74,7 @@ jobs:
 
   deploy:
     needs: build
-    if: github.ref == 'refs/heads/main' && success()
+    if: github.ref == 'refs/heads/main' && needs.build.result == 'success'
     runs-on: ubuntu-latest
     
     steps:
