@@ -1,4 +1,4 @@
-name: Jekyll Site CI (Bypass Mode)
+name: Jekyll Site CI with Docker
 
 on:
   push:
@@ -9,6 +9,8 @@ on:
 env:
   JEKYLL_ENV: production
   BUNDLE_PATH: vendor/bundle
+  LC_ALL: C.UTF-8
+  LANG: C.UTF-8
 
 jobs:
   build:
@@ -19,39 +21,29 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Force install dependencies
-        run: |
-          bundle config set path $BUNDLE_PATH
-          bundle install --jobs 4 || true
-
-      - name: Force build with error capture
-        id: build
-        run: |
-          mkdir -p _site
-          echo "<h1>Build Debug</h1>" > _site/index.html
-          
-          # Attempt build but don't fail
-          if ! bundle exec jekyll build --trace 2>&1 | tee build.log; then
-            echo "::warning::Build failed (bypassed)"
-            echo "<pre>$(cat build.log)</pre>" >> _site/index.html
-          fi
-
-      - name: Upload debug info
-        uses: actions/upload-artifact@v4
         with:
-          name: debug-info
-          path: |
-            build.log
-            Gemfile.lock
-            _config.yml
-          retention-days: 7
+          fetch-depth: 0  # Required for proper Git history in Jekyll
 
-      - name: Upload site
+      - name: Setup Ruby environment
+        run: |
+          sudo apt-get update -qq
+          sudo gem install bundler -v 2.4.22
+          bundle config path $BUNDLE_PATH
+          bundle config deployment true
+
+      - name: Install dependencies
+        run: bundle install --jobs 4 --retry 3
+
+      - name: Build with Jekyll
+        run: |
+          bundle exec jekyll build --trace --verbose
+          [ -f ./_site/index.html ] || { echo "Error: No index.html generated"; exit 1; }
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: jekyll-site
-          path: _site
+          path: ./_site
           retention-days: 1
 
   deploy:
@@ -60,10 +52,36 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Force deploy
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./_site
-          force_orphan: true
-          keep_files: false
+          ref: gh-pages  # Checkout the gh-pages branch directly
+          clean: false  # Preserve existing files
+
+      - name: Download built site
+        uses: actions/download-artifact@v4
+        with:
+          name: jekyll-site
+          path: ./_site_temp
+
+      - name: Prepare deployment
+        run: |
+          # Remove all files except .git
+          if [ -d .git ]; then
+            find . -path ./.git -prune -o -exec rm -rf {} \; 2> /dev/null || true
+          fi
+          
+          # Move new files into place
+          mv ./_site_temp/* .
+          rm -rf ./_site_temp
+          
+          # Configure git
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git config --global --add safe.directory /github/workspace
+
+      - name: Commit and push
+        run: |
+          git add -A
+          git commit -m "Deploy Jekyll site $(date +'%Y-%m-%d %H:%M:%S')" --allow-empty
+          git push origin gh-pages
