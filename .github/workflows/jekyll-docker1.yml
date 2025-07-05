@@ -24,66 +24,86 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Validate repository structure
+      - name: Debug - Show repository structure
         run: |
+          echo "Current directory: $(pwd)"
           echo "Repository contents:"
-          ls -la
-          [ -f Gemfile ] || { echo "Error: Gemfile missing"; exit 1; }
-          [ -f _config.yml ] || { echo "Error: _config.yml missing"; exit 1; }
+          ls -laR
+          echo "Checking required files..."
+          [ -f Gemfile ] || { echo "❌ Error: Gemfile missing"; exit 1; }
+          [ -f _config.yml ] || { echo "❌ Error: _config.yml missing"; exit 1; }
+          echo "✅ Basic structure validated"
 
       - name: Setup Ruby environment
         run: |
-          echo "Installing system dependencies..."
-          sudo apt-get update -qq && sudo apt-get install -y build-essential
-          echo "Updating RubyGems..."
+          echo "⬇️ Installing system dependencies..."
+          sudo apt-get update -qq && sudo apt-get install -y build-essential cmake
+          echo "🔄 Updating RubyGems..."
           sudo gem update --system -N
-          echo "Installing Bundler..."
+          echo "📦 Installing Bundler..."
           sudo gem install bundler -v 2.4.22 -N
-          echo "Configuring Bundler..."
+          echo "⚙️ Configuring Bundler..."
           bundle config set path $BUNDLE_PATH
           bundle config set deployment true
           bundle config set clean true
           bundle config set without 'development test'
 
       - name: Install dependencies
+        id: install
         run: |
-          echo "Installing dependencies..."
-          bundle install --jobs 4 --retry 3
-          echo "Installed gems:"
+          echo "🧩 Installing dependencies..."
+          if ! bundle install --jobs 4 --retry 3; then
+            echo "❌ Dependency installation failed"
+            echo "Current bundle environment:"
+            bundle env
+            exit 1
+          fi
+          echo "📋 Installed gems:"
           bundle list
 
       - name: Verify environment
         run: |
-          echo "Environment versions:"
+          echo "🔍 Environment versions:"
           ruby -v
           bundle -v
           bundle exec jekyll -v
-          echo "Running Jekyll doctor..."
-          bundle exec jekyll doctor || true
+          echo "🏥 Running Jekyll doctor..."
+          bundle exec jekyll doctor || echo "⚠️ Jekyll doctor found issues (non-fatal)"
 
       - name: Build Jekyll site
         id: build
         run: |
-          echo "Starting Jekyll build..."
-          set -x
-          bundle exec jekyll build \
+          echo "🏗️ Starting Jekyll build..."
+          set -eo pipefail
+          mkdir -p _site
+          
+          # Run build and capture output
+          if ! bundle exec jekyll build \
             --trace \
             --verbose \
             --config _config.yml \
             --destination ./_site \
-            > build.log 2>&1 || { echo "Jekyll build failed"; cat build.log; exit 1; }
+            2>&1 | tee build.log; then
+            echo "❌ Jekyll build failed"
+            echo "=== BEGIN ERROR OUTPUT ==="
+            cat build.log | grep -i error || cat build.log
+            echo "=== END ERROR OUTPUT ==="
+            exit 1
+          fi
           
-          echo "Build completed successfully"
-          echo "Generated files:"
+          echo "✅ Build completed successfully"
+          echo "📁 Generated files:"
           ls -la ./_site
-          [ -f ./_site/index.html ] || { echo "Error: No index.html generated"; exit 1; }
+          [ -f ./_site/index.html ] || { echo "❌ Error: No index.html generated"; exit 1; }
 
       - name: Upload build logs
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs
+          name: build-debug-info
           path: |
             build.log
+            Gemfile.lock
+            _config.yml
             ./_site/.jekyll-metadata
           retention-days: 7
 
