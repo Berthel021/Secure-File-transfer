@@ -16,78 +16,84 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: jekyll/builder:4.2.0  # Pinned version for stability
-      
+      image: jekyll/builder:4.2.0
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Get complete history for plugins that need it
+          fetch-depth: 0
 
       - name: Validate repository structure
         run: |
           echo "Repository contents:"
           ls -la
-          echo "Checking required files..."
-          [ -f Gemfile ] || exit 1
-          [ -f _config.yml ] || exit 1
-          echo "Basic structure validated"
+          [ -f Gemfile ] || { echo "Error: Gemfile missing"; exit 1; }
+          [ -f _config.yml ] || { echo "Error: _config.yml missing"; exit 1; }
 
       - name: Setup Ruby environment
         run: |
-          sudo gem update --system
-          sudo gem install bundler -v 2.4.22
+          echo "Installing system dependencies..."
+          sudo apt-get update -qq && sudo apt-get install -y build-essential
+          echo "Updating RubyGems..."
+          sudo gem update --system -N
+          echo "Installing Bundler..."
+          sudo gem install bundler -v 2.4.22 -N
+          echo "Configuring Bundler..."
           bundle config set path $BUNDLE_PATH
           bundle config set deployment true
           bundle config set clean true
           bundle config set without 'development test'
 
-      - name: Install dependencies with retry
+      - name: Install dependencies
         run: |
-          n=0
-          until [ "$n" -ge 3 ]
-          do
-            bundle install --jobs 4 --retry 3 && break
-            n=$((n+1))
-            echo "Bundle install failed, attempt $n/3..."
-            sleep 5
-          done
-          [ "$n" -lt 3 ] || exit 1
+          echo "Installing dependencies..."
+          bundle install --jobs 4 --retry 3
+          echo "Installed gems:"
+          bundle list
 
       - name: Verify environment
         run: |
-          echo "Ruby version: $(ruby -v)"
-          echo "Bundler version: $(bundle -v)"
-          echo "Jekyll version: $(bundle exec jekyll -v)"
-          bundle exec jekyll doctor
+          echo "Environment versions:"
+          ruby -v
+          bundle -v
+          bundle exec jekyll -v
+          echo "Running Jekyll doctor..."
+          bundle exec jekyll doctor || true
 
-      - name: Build with Jekyll (with extended timeout)
-        timeout-minutes: 15
+      - name: Build Jekyll site
+        id: build
         run: |
-          set -exo pipefail
+          echo "Starting Jekyll build..."
+          set -x
           bundle exec jekyll build \
             --trace \
             --verbose \
             --config _config.yml \
             --destination ./_site \
-            2>&1 | tee build.log
-          [ -s ./_site/index.html ] || (echo "No index.html generated" && exit 1)
+            > build.log 2>&1 || { echo "Jekyll build failed"; cat build.log; exit 1; }
+          
+          echo "Build completed successfully"
+          echo "Generated files:"
+          ls -la ./_site
+          [ -f ./_site/index.html ] || { echo "Error: No index.html generated"; exit 1; }
 
-      - name: Upload build logs (for debugging)
-        if: always()
+      - name: Upload build logs
         uses: actions/upload-artifact@v4
         with:
           name: build-logs
-          path: build.log
-          retention-days: 1
+          path: |
+            build.log
+            ./_site/.jekyll-metadata
+          retention-days: 7
 
       - name: Upload site artifact
-        if: success()
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: jekyll-site
           path: ./_site
-          retention-days: 1
+          retention-days: 7
 
   deploy:
     needs: build
